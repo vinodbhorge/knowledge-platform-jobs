@@ -41,7 +41,12 @@ jobs:
         mvn clean install -DskipTests \
           -DCLOUD_STORE_GROUP_ID=org.sunbird \
           -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
-          -DCLOUD_STORE_VERSION=1.4.7.2 \
+          -DCLOUD_STORE_VERSION=1.4.6
+
+    - name: Package Distribution
+      working-directory: ./jobs-distribution
+      run: |
+        mvn package -Pbuild-docker-image
 
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@v2
