@@ -63,7 +63,7 @@ jobs:
       - name: Package flink
         working-directory: jobs-distribution
         run: |
-          mvn clean package
+          mvn package 
 
       - name: Build Docker Image
         run: |
