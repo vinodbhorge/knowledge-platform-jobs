@@ -1,5 +1,6 @@
 <assembly>
   <includeBaseDirectory>false</includeBaseDirectory>
+  <id>distro-assembly</id>
   <formats>
     <format>tar.gz</format>
   </formats>

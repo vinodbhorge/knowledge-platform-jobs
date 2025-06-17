@@ -30,7 +30,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '11'
-          maven-version: '3.8.7'
 
       - name: Login Docker Registry
         run: |        
