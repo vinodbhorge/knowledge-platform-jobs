@@ -43,8 +43,7 @@ jobs:
           "azure" | "dockerhub")
             echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "${{ secrets.REGISTRY_NAME }}" \
             --username "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
-            REGISTRY_URL=$(echo "${{ secrets.REGISTRY_URL }} | tr '[:upper:]' '[:lower:]')
-            REPO_NAME=$(basename "${{ github.workspace }}" | tr '[:upper:]' '[:lower:]')
+            REGISTRY_URL="$(echo "${{ secrets.REGISTRY_URL }}/$(basename "${{ github.workspace }}")" | tr '[:upper:]' '[:lower:]')"
             REGISTRY_URL="${REGISTRY_URL}/${REPO_NAME}"
             ;;
           *)
