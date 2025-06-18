@@ -42,13 +42,13 @@ jobs:
           -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
           -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
 
-      - name: Upload jobs-core to share with other jobs
+      - name: Upload jobs-core artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jobs-core-artifacts
+          name: jobs-core-artifact
           path: |
-            ~/.m2/repository/org/sunbird/jobs-core
-
+            jobs-core/target/jobs-core-*.jar
+            jobs-core/pom.xml
 
   build-modules:
     needs: build-core
@@ -76,13 +76,18 @@ jobs:
       - name: Download jobs-core artifact
         uses: actions/download-artifact@v4
         with:
-          name: jobs-core-artifacts
-          path: temp-m2
+          name: jobs-core-artifact
+          path: jobs-core-artifact
 
-      - name: Restore jobs-core into local Maven repo
+      - name: Install jobs-core locally
         run: |
-          mkdir -p ~/.m2/repository/org/sunbird
-          cp -r temp-m2 ~/.m2/repository/org/sunbird/jobs-core
+          mvn install:install-file \
+            -Dfile=jobs-core-artifact/jobs-core-1.0.0.jar \
+            -DpomFile=jobs-core-artifact/pom.xml \
+            -DgroupId=org.sunbird \
+            -DartifactId=jobs-core \
+            -Dversion=1.0.0 \
+            -Dpackaging=jar
 
       - name: Cache Maven packages
         uses: actions/cache@v3
