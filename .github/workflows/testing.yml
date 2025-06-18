@@ -1,4 +1,4 @@
-name: Build and Push Flink Image
+name: Build and Package
 
 on:
   push:
@@ -9,14 +9,12 @@ env:
   CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID || 'org.sunbird' }}
   CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID || 'cloud-store-sdk_2.12' }}
   CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION || '1.4.6' }}
-  
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
 
+jobs:
+  build-core:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Cache Maven packages
         uses: actions/cache@v3
@@ -25,61 +23,137 @@ jobs:
           key: ${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Set up JDK 11 and Maven 3.8.7
-        uses: actions/setup-java@v4
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
         with:
-            distribution: 'temurin'
-            java-version: '11'
+          java-version: '11'
+          distribution: 'temurin'
 
       - name: Set up Maven 3.8.7
         uses: s4u/setup-maven-action@v1.11.0
         with:
-            maven-version: 3.8.7
+          maven-version: 3.8.7
 
-      - name: Login Docker Registry
-        run: |        
-          case "${{ vars.REGISTRY_PROVIDER }}" in
-          "gcp")
-            echo "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" | base64 --decode > $HOME/gcloud-key.json
-            gcloud auth activate-service-account --key-file=$HOME/gcloud-key.json
-            gcloud auth configure-docker ${{ secrets.REGISTRY_NAME }}
-            REGISTRY_URL=$(echo "${{ secrets.REGISTRY_URL }}" | tr '[:upper:]' '[:lower:]') 
-            ;;
-          "azure" | "dockerhub")
-            echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "${{ secrets.REGISTRY_NAME }}" \
-            --username "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
-            REGISTRY_URL=$(echo "${{ secrets.REGISTRY_URL }}" | tr '[:upper:]' '[:lower:]')
-            ;;
-          *)
-            REPO_NAME_LOWERCASE=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            REGISTRY_URL="ghcr.io/$REPO_NAME_LOWERCASE"
-            ;;
-            esac
-            echo "REGISTRY_URL=${REGISTRY_URL}" >> $GITHUB_ENV
-
-      - name: Build flink
+      - name: Build jobs-core
+        working-directory: jobs-core
         run: |
           mvn clean install -DskipTests \
-          -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID}  \
+          -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID} \
           -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
           -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
 
-      - name: Package flink
+  build-modules:
+    needs: build-core
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [
+          'post-publish-processor',
+          'publish-pipeline',
+          'publish-core',
+          'content-publish',
+          'live-node-publisher',
+          'search-indexer',
+          'auto-creator-v2',
+          'content-auto-creator',
+          'transaction-event-processor',
+          'qrcode-image-generator',
+          'dialcode-context-updater',
+          'cassandra-data-migration',
+          'live-video-stream-generator',
+          'csp-migrator',
+          'asset-enrichment',
+          'video-stream-generator'
+        ]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Set up Maven 3.8.7
+        uses: s4u/setup-maven-action@v1.11.0
+        with:
+          maven-version: 3.8.7
+
+      - name: Build Module ${{ matrix.module }}
+        working-directory: ${{ matrix.module }}
+        run: |
+          mvn clean install -DskipTests \
+          -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID} \
+          -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
+          -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
+
+  build-distribution:
+    needs: build-modules
+    runs-on: ubuntu-latest
+    outputs:
+      tar_path: ${{ steps.set-output.outputs.tar_path }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Set up Maven 3.8.7
+        uses: s4u/setup-maven-action@v1.11.0
+        with:
+          maven-version: 3.8.7
+
+      - name: Build jobs-distribution
         working-directory: jobs-distribution
         run: |
-          mvn package 
+          mvn clean package -DskipTests \
+            -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID} \
+            -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
+            -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
+
+      - name: Upload TAR to workspace
+        uses: actions/upload-artifact@v3
+        with:
+          name: jobs-distribution-tar
+          path: jobs-distribution/target/*.tar.gz
+
+  build-push-docker-image:
+    needs: build-distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download tar artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: jobs-distribution-tar
+          path: jobs-distribution/target/
 
       - name: Build Docker Image
         working-directory: jobs-distribution
         run: |
           IMAGE_TAG=$(echo "${{ github.ref_name }}_$(echo $GITHUB_SHA | cut -c1-7)" | tr '[:upper:]' '[:lower:]')
           docker build -t ${REGISTRY_URL}:${IMAGE_TAG} .
-
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
      
       - name: Push Docker Image
         run: |
           docker push ${REGISTRY_URL}:${IMAGE_TAG}
           echo "Pushed Docker image: ${REGISTRY_URL}:${IMAGE_TAG}"
-    
