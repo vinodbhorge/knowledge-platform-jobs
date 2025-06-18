@@ -43,7 +43,7 @@ jobs:
           -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
 
       - name: Upload jobs-core to share with other jobs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jobs-core-artifacts
           path: |
@@ -74,7 +74,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Download jobs-core artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: jobs-core-artifacts
           path: temp-m2
