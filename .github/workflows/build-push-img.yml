@@ -43,7 +43,7 @@ jobs:
           "azure" | "dockerhub")
             echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "${{ secrets.REGISTRY_NAME }}" \
             --username "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
-            REGISTRY_URL=$(echo "${{ secrets.REGISTRY_URL }}" | tr '[:upper:]' '[:lower:]')
+            REGISTRY_URL=$(echo "${{ secrets.REGISTRY_URL }}/${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
             ;;
           *)
             REPO_NAME_LOWERCASE=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
@@ -77,5 +77,3 @@ jobs:
         run: |
           docker push ${REGISTRY_URL}:${IMAGE_TAG}
           echo "Pushed Docker image: ${REGISTRY_URL}:${IMAGE_TAG}"
-          
-    
