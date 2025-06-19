@@ -58,9 +58,6 @@ jobs:
         module: [
           'post-publish-processor',
           'publish-pipeline',
-          'publish-core',
-          'content-publish',
-          'live-node-publisher',
           'search-indexer',
           'auto-creator-v2',
           'content-auto-creator',
