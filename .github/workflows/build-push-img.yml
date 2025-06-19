@@ -60,7 +60,7 @@ jobs:
 
       - name: Build flink
         run: |
-          mvn clean install -T 1C -DskipTests \
+          mvn clean install -DskipTests \
           -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID}  \
           -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
           -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
