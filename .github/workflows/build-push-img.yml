@@ -23,7 +23,9 @@ jobs:
         with:
           path: ~/.m2
           key: ${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          restore-keys: |
+            ${{ runner.os }}-mvn
+            ${{ runner.os }}-
 
       - name: Set up JDK 11 and Maven
         uses: actions/setup-java@v3
