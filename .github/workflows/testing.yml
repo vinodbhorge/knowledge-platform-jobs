@@ -6,7 +6,7 @@ on:
       - '*'
 
 jobs:
-  build-core:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -29,111 +29,12 @@ jobs:
         with:
           maven-version: 3.8.7
 
-      - name: Install parent POM
+      - name: Build all modules in parallel
         run: |
-          mvn install -N -DskipTests \
+          mvn clean install -T 1C -DskipTests \
             -DCLOUD_STORE_GROUP_ID=org.sunbird \
             -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
             -DCLOUD_STORE_VERSION=1.4.6
-
-      - name: Build and Install jobs-core
-        run: |
-          cd jobs-core
-          mvn clean install -DskipTests \
-            -DCLOUD_STORE_GROUP_ID=org.sunbird \
-            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
-            -DCLOUD_STORE_VERSION=1.4.6
-
-      - name: Upload sunbird Maven artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: sunbird-maven-artifacts
-          path: ~/.m2/repository/org/sunbird/
-
-  build-modules:
-    needs: build-core
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        module: [
-          'post-publish-processor',
-          'publish-pipeline',
-          'search-indexer',
-          'auto-creator-v2',
-          'content-auto-creator',
-          'transaction-event-processor',
-          'qrcode-image-generator',
-          'dialcode-context-updater',
-          'cassandra-data-migration',
-          'live-video-stream-generator',
-          'csp-migrator',
-          'asset-enrichment',
-          'video-stream-generator'
-        ]
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-
-      - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-
-      - name: Set up Maven 3.8.7
-        uses: s4u/setup-maven-action@v1.11.0
-        with:
-          maven-version: 3.8.7
-
-      - name: Download sunbird Maven artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: sunbird-maven-artifacts
-          path: ~/.m2/repository/org/sunbird/
-
-      - name: Build Module ${{ matrix.module }}
-        run: |
-          cd ${{ matrix.module }}
-          mvn clean install -DskipTests \
-            -DCLOUD_STORE_GROUP_ID=org.sunbird \
-            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
-            -DCLOUD_STORE_VERSION=1.4.6
-
-  build-distribution:
-    needs: build-modules
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-
-      - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-        
-      - name: Set up Maven 3.8.7
-        uses: s4u/setup-maven-action@v1.11.0
-        with:
-          maven-version: 3.8.7
-
-      - name: Download sunbird Maven artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: sunbird-maven-artifacts
-          path: ~/.m2/repository/org/sunbird/
 
       - name: Build jobs-distribution
         working-directory: jobs-distribution
@@ -144,7 +45,7 @@ jobs:
             -DCLOUD_STORE_VERSION=1.4.6
 
       - name: Upload Distribution Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: knowledge-platform-jobs-distribution
           path: |
