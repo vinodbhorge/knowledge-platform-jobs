@@ -58,13 +58,6 @@ jobs:
             esac
             echo "REGISTRY_URL=${REGISTRY_URL}" >> $GITHUB_ENV
 
-      - name: Pre-fetch Maven dependencies
-        run: |
-          mvn dependency:go-offline \
-            -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID}  \
-            -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
-            -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
-
       - name: Build flink
         run: |
           mvn clean install -T 1C -DskipTests \
