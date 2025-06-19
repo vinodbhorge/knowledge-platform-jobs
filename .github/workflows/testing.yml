@@ -2,7 +2,7 @@ name: Build and Package
 
 on:
   push:
-    tags:
+    branches:
       - '*'
       
 env:
@@ -84,7 +84,7 @@ jobs:
         working-directory: jobs-distribution
         run: |
           mvn package -DskipTests
-          
+
       - name: Build Docker Image
         working-directory: jobs-distribution
         run: |
