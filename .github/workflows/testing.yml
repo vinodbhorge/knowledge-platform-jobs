@@ -45,7 +45,7 @@ jobs:
             -DCLOUD_STORE_VERSION=1.4.6
 
       - name: Upload Distribution Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: knowledge-platform-jobs-distribution
           path: |
