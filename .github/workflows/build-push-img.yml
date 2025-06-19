@@ -22,10 +22,10 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}
+          key: maven-cache-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-mvn
-            ${{ runner.os }}-
+            maven-cache-${{ runner.os }}-
+            maven-cache-
 
       - name: Set up JDK 11 and Maven
         uses: actions/setup-java@v3
