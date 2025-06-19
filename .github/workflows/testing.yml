@@ -5,11 +5,6 @@ on:
     branches:
       - '*'
 
-env:
-  CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID || 'org.sunbird' }}
-  CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID || 'cloud-store-sdk_2.12' }}
-  CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION || '1.4.6' }}
-
 jobs:
   build-core:
     runs-on: ubuntu-latest
@@ -34,21 +29,20 @@ jobs:
         with:
           maven-version: 3.8.7
 
-      - name: Build jobs-core
-        working-directory: jobs-core
+      - name: Build and Install jobs-core
         run: |
-          mvn clean install -DskipTests \
-          -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID} \
-          -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
-          -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
+          cd jobs-core
+          mvn clean install -DskipTests
+          # Verify the artifact is installed
+          ls -la ~/.m2/repository/org/sunbird/jobs-core/
 
       - name: Upload jobs-core artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: jobs-core-artifact
+          name: jobs-core-artifacts
           path: |
-            jobs-core/target/jobs-core-*.jar
-            jobs-core/pom.xml
+            ~/.m2/repository/org/sunbird/jobs-core/
+            jobs-core/target/
 
   build-modules:
     needs: build-core
@@ -58,6 +52,9 @@ jobs:
         module: [
           'post-publish-processor',
           'publish-pipeline',
+          'publish-core',
+          'content-publish',
+          'live-node-publisher',
           'search-indexer',
           'auto-creator-v2',
           'content-auto-creator',
@@ -73,22 +70,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Download jobs-core artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: jobs-core-artifact
-          path: jobs-core-artifact
-
-      - name: Install jobs-core locally
-        run: |
-          mvn install:install-file \
-            -Dfile=jobs-core-artifact/jobs-core-1.0.0.jar \
-            -DpomFile=jobs-core-artifact/pom.xml \
-            -DgroupId=org.sunbird \
-            -DartifactId=jobs-core \
-            -Dversion=1.0.0 \
-            -Dpackaging=jar
-
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
@@ -107,19 +88,26 @@ jobs:
         with:
           maven-version: 3.8.7
 
-      - name: Build Module ${{ matrix.module }}
-        working-directory: ${{ matrix.module }}
+      - name: Download jobs-core artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: jobs-core-artifacts
+          path: ~/.m2/repository/org/sunbird/jobs-core/
+
+      - name: Verify jobs-core dependency
         run: |
-          mvn clean install -DskipTests \
-          -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID} \
-          -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
-          -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
+          echo "Verifying jobs-core is available..."
+          ls -la ~/.m2/repository/org/sunbird/jobs-core/ || echo "jobs-core not found in local repo"
+          mvn dependency:resolve -Dclassifier=sources | grep jobs-core || echo "jobs-core dependency check completed"
+
+      - name: Build Module ${{ matrix.module }}
+        run: |
+          cd ${{ matrix.module }}
+          mvn clean install -DskipTests
 
   build-distribution:
     needs: build-modules
     runs-on: ubuntu-latest
-    outputs:
-      tar_path: ${{ steps.set-output.outputs.tar_path }}
     steps:
       - uses: actions/checkout@v3
 
@@ -135,46 +123,26 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin'
-
+        
       - name: Set up Maven 3.8.7
         uses: s4u/setup-maven-action@v1.11.0
         with:
           maven-version: 3.8.7
 
+      - name: Download jobs-core artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: jobs-core-artifacts
+          path: ~/.m2/repository/org/sunbird/jobs-core/
+
       - name: Build jobs-distribution
         working-directory: jobs-distribution
         run: |
-          mvn clean package -DskipTests \
-            -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID} \
-            -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
-            -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
+          mvn clean package -DskipTests
 
-      - name: Upload TAR to workspace
+      - name: Upload Distribution Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: jobs-distribution-tar
-          path: jobs-distribution/target/*.tar.gz
-
-  build-push-docker-image:
-    needs: build-distribution
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Download tar artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: jobs-distribution-tar
-          path: jobs-distribution/target/
-
-      - name: Build Docker Image
-        working-directory: jobs-distribution
-        run: |
-          IMAGE_TAG=$(echo "${{ github.ref_name }}_$(echo $GITHUB_SHA | cut -c1-7)" | tr '[:upper:]' '[:lower:]')
-          docker build -t ${REGISTRY_URL}:${IMAGE_TAG} .
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
-     
-      - name: Push Docker Image
-        run: |
-          docker push ${REGISTRY_URL}:${IMAGE_TAG}
-          echo "Pushed Docker image: ${REGISTRY_URL}:${IMAGE_TAG}"
+          name: knowledge-platform-jobs-distribution
+          path: |
+            jobs-distribution/target/*.tar.gz
