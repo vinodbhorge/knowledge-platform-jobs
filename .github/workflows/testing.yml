@@ -29,23 +29,26 @@ jobs:
         with:
           maven-version: 3.8.7
 
+      - name: Install parent POM
+        run: |
+          mvn install -N -DskipTests \
+            -DCLOUD_STORE_GROUP_ID=org.sunbird \
+            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
+            -DCLOUD_STORE_VERSION=1.4.6
+
       - name: Build and Install jobs-core
         run: |
           cd jobs-core
           mvn clean install -DskipTests \
-          -DCLOUD_STORE_GROUP_ID=org.sunbird \
-          -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
-          -DCLOUD_STORE_VERSION=1.4.6
-          # Verify the artifact is installed
-          ls -la ~/.m2/repository/org/sunbird/jobs-core/
+            -DCLOUD_STORE_GROUP_ID=org.sunbird \
+            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
+            -DCLOUD_STORE_VERSION=1.4.6
 
-      - name: Upload jobs-core artifacts
+      - name: Upload sunbird Maven artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jobs-core-artifacts
-          path: |
-            ~/.m2/repository/org/sunbird/jobs-core/
-            jobs-core/target/
+          name: sunbird-maven-artifacts
+          path: ~/.m2/repository/org/sunbird/
 
   build-modules:
     needs: build-core
@@ -91,25 +94,19 @@ jobs:
         with:
           maven-version: 3.8.7
 
-      - name: Download jobs-core artifacts
+      - name: Download sunbird Maven artifacts
         uses: actions/download-artifact@v4
         with:
-          name: jobs-core-artifacts
-          path: ~/.m2/repository/org/sunbird/jobs-core/
-
-      - name: Verify jobs-core dependency
-        run: |
-          echo "Verifying jobs-core is available..."
-          ls -la ~/.m2/repository/org/sunbird/jobs-core/ || echo "jobs-core not found in local repo"
-          mvn dependency:resolve -Dclassifier=sources | grep jobs-core || echo "jobs-core dependency check completed"
+          name: sunbird-maven-artifacts
+          path: ~/.m2/repository/org/sunbird/
 
       - name: Build Module ${{ matrix.module }}
         run: |
           cd ${{ matrix.module }}
           mvn clean install -DskipTests \
-          -DCLOUD_STORE_GROUP_ID=org.sunbird \
-          -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
-          -DCLOUD_STORE_VERSION=1.4.6
+            -DCLOUD_STORE_GROUP_ID=org.sunbird \
+            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
+            -DCLOUD_STORE_VERSION=1.4.6
 
   build-distribution:
     needs: build-modules
@@ -135,22 +132,23 @@ jobs:
         with:
           maven-version: 3.8.7
 
-      - name: Download jobs-core artifacts
+      - name: Download sunbird Maven artifacts
         uses: actions/download-artifact@v4
         with:
-          name: jobs-core-artifacts
-          path: ~/.m2/repository/org/sunbird/jobs-core/
+          name: sunbird-maven-artifacts
+          path: ~/.m2/repository/org/sunbird/
 
       - name: Build jobs-distribution
         working-directory: jobs-distribution
         run: |
-          mvn clean package -DskipTests
+          mvn clean package -DskipTests \
+            -DCLOUD_STORE_GROUP_ID=org.sunbird \
+            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
+            -DCLOUD_STORE_VERSION=1.4.6
 
       - name: Upload Distribution Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: knowledge-platform-jobs-distribution
           path: |
             jobs-distribution/target/*.tar.gz
-
-          
