@@ -2,9 +2,9 @@ name: Build and Push Flink Image
 
 on:
   push:
-    branches:
+    tags:
       - '*'
-
+      
 env:
   CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID || 'org.sunbird' }}
   CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID || 'cloud-store-sdk_2.12' }}
