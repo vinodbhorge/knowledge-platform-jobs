@@ -29,10 +29,6 @@ jobs:
         with:
           maven-version: 3.6.3
 
-      - name: Download all dependencies for all modules
-        run: |
-          mvn dependency:go-offline -T 1C
-
       - name: Install parent POM
         run: |
           mvn install -N -DskipTests \
@@ -44,6 +40,21 @@ jobs:
         run: |
           cd jobs-core
           mvn clean install -T 1C -DskipTests \
+            -DCLOUD_STORE_GROUP_ID=org.sunbird \
+            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
+            -DCLOUD_STORE_VERSION=1.4.6
+
+      - name: Download all dependencies for all modules
+        run: |
+          mvn dependency:go-offline -T 1C \
+            -DCLOUD_STORE_GROUP_ID=org.sunbird \
+            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
+            -DCLOUD_STORE_VERSION=1.4.6
+
+      - name : Build and Install Publish Pipeline
+        run: |
+          cd publish-pipeline
+          mvn clean install -DskipTests \
             -DCLOUD_STORE_GROUP_ID=org.sunbird \
             -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
             -DCLOUD_STORE_VERSION=1.4.6
@@ -61,7 +72,6 @@ jobs:
       matrix:
         module: [
           'post-publish-processor',
-          'publish-pipeline',
           'search-indexer',
           'auto-creator-v2',
           'content-auto-creator',
@@ -162,16 +172,18 @@ jobs:
         uses: s4u/setup-maven-action@v1.11.0
         with:
           maven-version: 3.6.3
+
       - name: Download combined Maven repository
         uses: actions/download-artifact@v4
         with:
           name: maven-repository-combined
           path: ~/.m2/repository
+          
       - name: Build jobs-distribution
         working-directory: jobs-distribution
         run: |
           mvn package -T 1C -DskipTests
-          
+
       - name: Upload Distribution Artifacts
         uses: actions/upload-artifact@v4
         with:
