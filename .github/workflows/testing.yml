@@ -46,7 +46,7 @@ jobs:
 
       - name : Build and Install Publish-core
         run: |
-          cd publish-core
+          cd publish-pipeline
           mvn clean install -T 1C -DskipTests \
             -DCLOUD_STORE_GROUP_ID=org.sunbird \
             -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
@@ -72,7 +72,6 @@ jobs:
       matrix:
         module: [
           'post-publish-processor',
-          'publish-pipeline',
           'search-indexer',
           'auto-creator-v2',
           'content-auto-creator',
