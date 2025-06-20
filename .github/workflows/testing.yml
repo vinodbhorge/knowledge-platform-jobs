@@ -24,10 +24,10 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: Set up Maven 3.6.3
+      - name: Set up Maven 3.8.7
         uses: s4u/setup-maven-action@v1.11.0
         with:
-          maven-version: 3.6.3
+          maven-version: 3.8.7
 
       - name: Install parent POM
         run: |
@@ -100,10 +100,10 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: Set up Maven 3.6.3
+      - name: Set up Maven 3.8.7
         uses: s4u/setup-maven-action@v1.11.0
         with:
-          maven-version: 3.6.3
+          maven-version: 3.8.7
 
       - name: Download Maven repository
         uses: actions/download-artifact@v4
@@ -168,17 +168,17 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin'
-      - name: Set up Maven 3.6.3
+      - name: Set up Maven 3.8.7
         uses: s4u/setup-maven-action@v1.11.0
         with:
-          maven-version: 3.6.3
+          maven-version: 3.8.7
 
       - name: Download combined Maven repository
         uses: actions/download-artifact@v4
         with:
           name: maven-repository-combined
           path: ~/.m2/repository
-          
+
       - name: Build jobs-distribution
         working-directory: jobs-distribution
         run: |
