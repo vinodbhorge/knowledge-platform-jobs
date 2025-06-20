@@ -220,7 +220,7 @@ jobs:
           name: maven-repository-combined
           path: ~/.m2/repository
 
-  build-distribution:
+  build-distribution-and-docker-image:
     needs: combine-artifacts
     runs-on: ubuntu-latest
     steps:
@@ -232,6 +232,11 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
+
+      - name: Set up Maven 3.8.7
+        uses: s4u/setup-maven-action@v1.11.0
+        with:
+          maven-version: 3.8.7
 
       - name: Download combined Maven repository
         uses: actions/download-artifact@v4
