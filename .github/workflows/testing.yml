@@ -24,10 +24,14 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: Set up Maven 3.8.7
+      - name: Set up Maven 3.6.3
         uses: s4u/setup-maven-action@v1.11.0
         with:
-          maven-version: 3.8.7
+          maven-version: 3.6.3
+
+      - name: Download all dependencies for all modules
+        run: |
+          mvn dependency:go-offline -T 1C
 
       - name: Install parent POM
         run: |
@@ -40,22 +44,6 @@ jobs:
         run: |
           cd jobs-core
           mvn clean install -T 1C -DskipTests \
-            -DCLOUD_STORE_GROUP_ID=org.sunbird \
-            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
-            -DCLOUD_STORE_VERSION=1.4.6
-
-      - name : Build and Install Publish Pipeline
-        run: |
-          cd publish-pipeline
-          mvn clean install -DskipTests \
-            -DCLOUD_STORE_GROUP_ID=org.sunbird \
-            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
-            -DCLOUD_STORE_VERSION=1.4.6
-
-
-      - name: Download all dependencies for all modules
-        run: |
-          mvn dependency:go-offline -T 1C \
             -DCLOUD_STORE_GROUP_ID=org.sunbird \
             -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
             -DCLOUD_STORE_VERSION=1.4.6
@@ -73,6 +61,7 @@ jobs:
       matrix:
         module: [
           'post-publish-processor',
+          'publish-pipeline',
           'search-indexer',
           'auto-creator-v2',
           'content-auto-creator',
@@ -101,10 +90,10 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: Set up Maven 3.8.7
+      - name: Set up Maven 3.6.3
         uses: s4u/setup-maven-action@v1.11.0
         with:
-          maven-version: 3.8.7
+          maven-version: 3.6.3
 
       - name: Download Maven repository
         uses: actions/download-artifact@v4
@@ -119,45 +108,70 @@ jobs:
             -DCLOUD_STORE_GROUP_ID=org.sunbird \
             -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
             -DCLOUD_STORE_VERSION=1.4.6
+      - name: Upload module artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.module }}-artifact
+          path: ~/.m2/repository/org/sunbird/${{ matrix.module }}
 
-  build-distribution:
-    needs: build-modules
+  combine-artifacts:
+    needs: [build-core, build-modules]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Download Maven repository from core
+        uses: actions/download-artifact@v4
+        with:
+          name: maven-repository
+          path: ~/.m2/repository
+      - name: Download all module artifacts
+        run: |
+          modules=(post-publish-processor search-indexer auto-creator-v2 content-auto-creator transaction-event-processor qrcode-image-generator dialcode-context-updater cassandra-data-migration live-video-stream-generator csp-migrator asset-enrichment video-stream-generator)
+          for module in "${modules[@]}"; do
+            mkdir -p ~/.m2/repository/org/sunbird/$module
+            artifact_dir="${module}-artifact"
+            # Download artifact using actions/download-artifact
+            echo "::group::Download $artifact_dir"
+            curl -sL -o $artifact_dir.zip "$ACTIONS_RUNTIME_URL/_apis/pipelines/workflows/$GITHUB_RUN_ID/artifacts?artifactName=$artifact_dir&api-version=6.0-preview"
+            unzip -o $artifact_dir.zip -d ~/.m2/repository/org/sunbird/$module || true
+            echo "::endgroup::"
+          done
+      - name: Upload combined Maven repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-repository-combined
+          path: ~/.m2/repository
 
+  build-distribution:
+    needs: combine-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-
       - name: Set up JDK 11
         uses: actions/setup-java@v3
         with:
           java-version: '11'
           distribution: 'temurin'
-        
-      - name: Set up Maven 3.8.7
+      - name: Set up Maven 3.6.3
         uses: s4u/setup-maven-action@v1.11.0
         with:
-          maven-version: 3.8.7
-
-      - name: Download Maven repository
+          maven-version: 3.6.3
+      - name: Download combined Maven repository
         uses: actions/download-artifact@v4
         with:
-          name: maven-repository
+          name: maven-repository-combined
           path: ~/.m2/repository
-
       - name: Build jobs-distribution
         working-directory: jobs-distribution
         run: |
-          mvn clean package -T 1C -DskipTests \
-            -DCLOUD_STORE_GROUP_ID=org.sunbird \
-            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
-            -DCLOUD_STORE_VERSION=1.4.6
-
+          mvn package -T 1C -DskipTests
+          
       - name: Upload Distribution Artifacts
         uses: actions/upload-artifact@v4
         with:
