@@ -44,17 +44,17 @@ jobs:
             -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
             -DCLOUD_STORE_VERSION=1.4.6
 
-      - name: Download all dependencies for all modules
-        run: |
-          mvn dependency:go-offline -T 1C \
-            -DCLOUD_STORE_GROUP_ID=org.sunbird \
-            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
-            -DCLOUD_STORE_VERSION=1.4.6
-
       - name : Build and Install Publish Pipeline
         run: |
           cd publish-pipeline
           mvn clean install -DskipTests \
+            -DCLOUD_STORE_GROUP_ID=org.sunbird \
+            -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
+            -DCLOUD_STORE_VERSION=1.4.6
+
+      - name: Download all dependencies for all modules
+        run: |
+          mvn dependency:go-offline -T 1C \
             -DCLOUD_STORE_GROUP_ID=org.sunbird \
             -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
             -DCLOUD_STORE_VERSION=1.4.6
