@@ -134,18 +134,86 @@ jobs:
         with:
           name: maven-repository
           path: ~/.m2/repository
+
+      - uses: actions/checkout@v3
+      - name: Download Maven repository from core
+        uses: actions/download-artifact@v4
+        with:
+          name: maven-repository
+          path: ~/.m2/repository
+
       - name: Download all module artifacts
-        run: |
-          modules=(post-publish-processor search-indexer auto-creator-v2 content-auto-creator transaction-event-processor qrcode-image-generator dialcode-context-updater cassandra-data-migration live-video-stream-generator csp-migrator asset-enrichment video-stream-generator)
-          for module in "${modules[@]}"; do
-            mkdir -p ~/.m2/repository/org/sunbird/$module
-            artifact_dir="${module}-artifact"
-            # Download artifact using actions/download-artifact
-            echo "::group::Download $artifact_dir"
-            curl -sL -o $artifact_dir.zip "$ACTIONS_RUNTIME_URL/_apis/pipelines/workflows/$GITHUB_RUN_ID/artifacts?artifactName=$artifact_dir&api-version=6.0-preview"
-            unzip -o $artifact_dir.zip -d ~/.m2/repository/org/sunbird/$module || true
-            echo "::endgroup::"
-          done
+        uses: actions/download-artifact@v4
+        with:
+          name: post-publish-processor-artifact
+          path: ~/.m2/repository/org/sunbird/post-publish-processor
+
+      - name: Download search-indexer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: search-indexer-artifact
+          path: ~/.m2/repository/org/sunbird/search-indexer
+
+      - name: Download auto-creator-v2 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: auto-creator-v2-artifact
+          path: ~/.m2/repository/org/sunbird/auto-creator-v2
+
+      - name: Download content-auto-creator artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: content-auto-creator-artifact
+          path: ~/.m2/repository/org/sunbird/content-auto-creator
+
+      - name: Download transaction-event-processor artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: transaction-event-processor-artifact
+          path: ~/.m2/repository/org/sunbird/transaction-event-processor
+          
+      - name: Download qrcode-image-generator artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qrcode-image-generator-artifact
+          path: ~/.m2/repository/org/sunbird/qrcode-image-generator
+
+      - name: Download dialcode-context-updater artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dialcode-context-updater-artifact
+          path: ~/.m2/repository/org/sunbird/dialcode-context-updater
+
+      - name: Download cassandra-data-migration artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cassandra-data-migration-artifact
+          path: ~/.m2/repository/org/sunbird/cassandra-data-migration
+
+      - name: Download live-video-stream-generator artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: live-video-stream-generator-artifact
+          path: ~/.m2/repository/org/sunbird/live-video-stream-generator
+
+      - name: Download csp-migrator artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: csp-migrator-artifact
+          path: ~/.m2/repository/org/sunbird/csp-migrator
+
+      - name: Download asset-enrichment artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: asset-enrichment-artifact
+          path: ~/.m2/repository/org/sunbird/asset-enrichment
+
+      - name: Download video-stream-generator artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: video-stream-generator-artifact
+          path: ~/.m2/repository/org/sunbird/video-stream-generator
+
       - name: Upload combined Maven repository
         uses: actions/upload-artifact@v4
         with:
