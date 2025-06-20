@@ -129,20 +129,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Download Maven repository from core
         uses: actions/download-artifact@v4
         with:
           name: maven-repository
           path: ~/.m2/repository
 
-      - uses: actions/checkout@v3
-      - name: Download Maven repository from core
-        uses: actions/download-artifact@v4
-        with:
-          name: maven-repository
-          path: ~/.m2/repository
-
-      - name: Download all module artifacts
+      - name: Download post-publish-processor artifact
         uses: actions/download-artifact@v4
         with:
           name: post-publish-processor-artifact
@@ -252,9 +246,36 @@ jobs:
         run: |
           mvn package -T 1C -DskipTests
 
-      - name: Upload Distribution Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: knowledge-platform-jobs-distribution
-          path: |
-            jobs-distribution/target/*.tar.gz
+      - name: Login Docker Registry
+        run: |        
+          case "${{ vars.REGISTRY_PROVIDER }}" in
+          "gcp")
+            echo "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" | base64 --decode > $HOME/gcloud-key.json
+            gcloud auth activate-service-account --key-file=$HOME/gcloud-key.json
+            gcloud auth configure-docker ${{ secrets.REGISTRY_NAME }}
+            REGISTRY_URL=$(echo "${{ secrets.REGISTRY_URL }}" | tr '[:upper:]' '[:lower:]') 
+            ;;
+          "azure" | "dockerhub")
+            echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "${{ secrets.REGISTRY_NAME }}" \
+            --username "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+            REGISTRY_URL="$(echo "${{ secrets.REGISTRY_URL }}/$(basename "${{ github.workspace }}")" | tr '[:upper:]' '[:lower:]')"
+            ;;
+          *)
+            REPO_NAME_LOWERCASE=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            REGISTRY_URL="ghcr.io/$REPO_NAME_LOWERCASE"
+            ;;
+            esac
+            echo "REGISTRY_URL=${REGISTRY_URL}" >> $GITHUB_ENV
+
+      - name: Build Docker Image
+        working-directory: jobs-distribution
+        run: |
+          IMAGE_TAG=$(echo "${{ github.ref_name }}_$(echo $GITHUB_SHA | cut -c1-7)" | tr '[:upper:]' '[:lower:]')
+          docker build -t ${REGISTRY_URL}:${IMAGE_TAG} .
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+     
+      - name: Push Docker Image
+        run: |
+          docker push ${REGISTRY_URL}:${IMAGE_TAG}
+          echo "Pushed Docker image: ${REGISTRY_URL}:${IMAGE_TAG}"
