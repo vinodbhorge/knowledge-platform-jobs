@@ -44,6 +44,10 @@ jobs:
             -DCLOUD_STORE_ARTIFACT_ID=cloud-store-sdk_2.12 \
             -DCLOUD_STORE_VERSION=1.4.6
 
+      - name: Download all dependencies for all modules
+        run: |
+          mvn dependency:go-offline -T 1C
+
       - name: Upload Maven repository
         uses: actions/upload-artifact@v4
         with:
